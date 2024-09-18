@@ -8,12 +8,12 @@ current_dir = os.path.dirname(__file__)
 
 # Construct the full paths to the model files
 best_lr_path = os.path.join(current_dir, 'models', 'Close_Price_Models', 'D1', 'best_lr_D1.pkl')
-best_rf_path = os.path.join(current_dir, 'models', 'Close_Price_Models', 'D1', 'best_rf_D1.pkl')
+# best_rf_path = os.path.join(current_dir, 'models', 'Close_Price_Models', 'D1', 'best_rf_D1.pkl')
 best_xgbr_path = os.path.join(current_dir, 'models', 'Close_Price_Models', 'D1', 'best_xgbr_D1.pkl')
 
 # Load the models
 best_lr = joblib.load(best_lr_path)
-best_rf = joblib.load(best_rf_path)
+# best_rf = joblib.load(best_rf_path)
 best_xgbr = joblib.load(best_xgbr_path)
 
 
@@ -93,21 +93,8 @@ def make_predictions(user_inputs):
     # Step 3: Make predictions using each model
     predictions = {
         "Linear Regression Prediction": best_lr.predict(input_data)[0],
-        "Random Forest Prediction": best_rf.predict(input_data)[0],
+        # "Random Forest Prediction": best_rf.predict(input_data)[0],
         "XGBoost Prediction": best_xgbr.predict(input_data)[0]
     }
     
     return predictions
-
-
-# # Example Usage
-# user_inputs = {
-#     'Open': 1.1023,
-#     'High': 1.1034,
-#     'Low': 1.1011,
-#     'Volume': 1450
-# }
-
-# # Call the function to make predictions
-# predictions = make_predictions(user_inputs)
-# print(predictions)
