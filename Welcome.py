@@ -6,28 +6,31 @@ st.markdown("""
 <style>
     body {
         font-family: 'Roboto', sans-serif;
+        background-color: #f4f4f9;  /* Light background for contrast */
+        color: #333;  /* Dark text for readability */
     }
     .welcome-container {
-        background-color: transparent;  /* No background color */
-        padding: 0;  /* No padding */
+        background-color: rgba(255, 255, 255, 0.9);  /* White background */
+        padding: 30px;  /* Padding for spacing */
+        border-radius: 10px;  /* Rounded corners */
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Subtle shadow */
         text-align: center;
-        color: white;
         margin-top: 20px;
     }
     .welcome-title {
         font-size: 2.5em;
-        color: #9f7aea;
-        margin: 0;  /* No margin */
+        color: #6c63ff; /* Primary color */
+        margin: 0;  
     }
     .welcome-subtitle {
         font-size: 1.8em;
-        color: #fff;
-        margin: 0;  /* No margin */
+        color: #333;
+        margin: 10px 0;  
     }
     .welcome-text {
         font-size: 1.2em;
-        color: #a0aec0;
-        margin: 10px 0;  /* Small margin for spacing */
+        color: #666;
+        margin: 10px 0;  
     }
     .image-container {
         display: flex;
@@ -37,9 +40,32 @@ st.markdown("""
     img {
         border-radius: 15px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s; /* Smooth scaling effect */
+    }
+    img:hover {
+        transform: scale(1.05); /* Scale on hover */
+    }
+    .button {
+        background-color: #6c63ff; /* Button color */
+        color: white; /* Button text color */
+        border-radius: 5px; /* Rounded corners */
+        padding: 10px 20px; /* Padding inside button */
+        border: none; /* No border */
+        cursor: pointer; /* Pointer cursor on hover */
+        transition: background-color 0.3s; /* Smooth transition */
+    }
+    .button:hover {
+        background-color: #5753d6; /* Darker button on hover */
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Sidebar functionality
+if 'sidebar_open' not in st.session_state:
+    st.session_state.sidebar_open = False
+
+def toggle_sidebar():
+    st.session_state.sidebar_open = not st.session_state.sidebar_open
 
 # Main content
 st.title("Welcome to the Forex & Stock Price Prediction Application")
@@ -78,5 +104,16 @@ st.write("""
 4. **Feature Engineering**: Gain deeper insights into your data with our feature engineering tools.
 """)
 
-# Call to action
-st.markdown("### Ready to make your predictions? Scroll down to the sidebar to get started!")
+# Call to action with a styled button
+if st.button("Open Sidebar"):
+    toggle_sidebar()
+
+if st.session_state.sidebar_open:
+    st.sidebar.title("Information")
+    
+    # Add an icon (using emoji) and a brief informational message
+    st.sidebar.markdown("🔍 **Get Insights**")
+    st.sidebar.write("Explore various Forex pairs and gain insights into price predictions.")
+        
+# Additional call to action
+st.markdown("<button class='button' onclick='toggle_sidebar()'>Ready to make your predictions? Toggle the sidebar to get started!</button>", unsafe_allow_html=True)

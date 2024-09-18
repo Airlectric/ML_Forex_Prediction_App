@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 from datetime import datetime
 import matplotlib.colors as mcolors
+import time
 import os
 
 # Import functions from the other script
@@ -233,7 +234,31 @@ if historical_data is not None:
     else:
         st.warning("Feature engineering requires 'Open', 'High', 'Low', 'Close', and 'Volume' columns.")
 else:
-    st.error("No historical data available. Please upload a CSV file or select an existing dataset.")
+    st.error("No historical data available.")
+    
+    # Include an image or animation that draws attention to the sidebar
+    st.info("Please toggle the sidebar to upload a CSV file or select an existing dataset.")
+
+    # Add a spinner animation as an attention grabber
+    with st.spinner('Waiting for user to select or upload data...'):
+        time.sleep(2)  # Simulates some waiting time
+    
+    # Optionally include an emoji or an image
+    st.markdown("""
+        <style>
+        .flashing {
+            animation: flash 1.5s infinite;
+        }
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        </style>
+        <div class="flashing" style="text-align: center;">
+            📂 Click the arrow on the top-left to upload or load data 📂
+        </div>
+    """, unsafe_allow_html=True)
 
 # Download template button
 st.sidebar.subheader("Download Template")

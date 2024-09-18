@@ -6,6 +6,7 @@ import plotly.express as px
 from datetime import datetime
 import matplotlib.colors as mcolors
 import mplfinance as mpf
+import time
 import os
 
 
@@ -350,19 +351,43 @@ if historical_data is not None:
     st.info("A correlation matrix helps users see how different price factors (e.g., Open, Close, Volume) are related. A strong positive correlation (closer to 1) means the two features move together, while a strong negative correlation (closer to -1) means they move in opposite directions.")
 
 else:
-    st.error("No historical data available. Please upload a CSV file or select an existing dataset.")
+    st.error("No historical data available.")
+    
+    # Include an image or animation that draws attention to the sidebar
+    st.info("Please toggle the sidebar to upload a CSV file or select an existing dataset.")
 
-# Download template button
-st.sidebar.subheader("Download Template")
-if st.sidebar.button("Download Template CSV"):
-    template_file_path = download_template()
-    with open(template_file_path, "rb") as f:
-        st.sidebar.download_button(
-            label="Download Template CSV",
-            data=f,
-            file_name="template.csv",
-            mime="text/csv"
-        )
+    # Add a spinner animation as an attention grabber
+    with st.spinner('Waiting for user to select or upload data...'):
+        time.sleep(2)  # Simulates some waiting time
+    
+    # Optionally include an emoji or an image
+    st.markdown("""
+        <style>
+        .flashing {
+            animation: flash 1.5s infinite;
+        }
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        </style>
+        <div class="flashing" style="text-align: center;">
+            📂 Click the arrow on the top-left to upload or load data 📂
+        </div>
+    """, unsafe_allow_html=True)
+            
+    # Download template button
+    st.sidebar.subheader("Download Template")
+    if st.sidebar.button("Download Template CSV"):
+        template_file_path = download_template()
+        with open(template_file_path, "rb") as f:
+            st.sidebar.download_button(
+                label="Download Template CSV",
+                data=f,
+                file_name="template.csv",
+                mime="text/csv"
+            )
 
 # Custom styling for the Streamlit app
 st.markdown("""
