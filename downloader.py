@@ -15,7 +15,7 @@ def download_historical_forex_data(period):
     data_url = "/data-app"
 
     # Set up the download directory
-    download_dir = os.path.join(os.getcwd(), "EURUSD_MetaTrader_CSV")
+    download_dir = os.path.join(os.getcwd(), "datasets")
     os.makedirs(download_dir, exist_ok=True)
 
     # Set up the Selenium WebDriver with the specified download directory

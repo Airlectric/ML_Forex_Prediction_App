@@ -46,6 +46,7 @@ def calculate_engineered_features(df):
     
     return df
 
+
 def make_predictions(user_inputs):
     """
     Takes user inputs, preprocesses them, and feeds them into trained models to make predictions.
@@ -59,7 +60,7 @@ def make_predictions(user_inputs):
     
     # Step 1: Define the feature names
     feature_names = ['Open', 'High', 'Low', 'Volume']
-   
+    
     # Create a DataFrame from the user inputs
     input_data = pd.DataFrame([user_inputs], columns=feature_names)
     
@@ -70,20 +71,24 @@ def make_predictions(user_inputs):
     input_data = input_data.astype(float)
 
     # Define the columns that should be present in the model
-    engineered_feature_names = ['High_Low_Range', 'Open_High_Range', 'Open_Low_Range', 
-                                'Rolling_Volatility', 'True_Range', 'SMA_Open_3', 
-                                'SMA_High_3', 'Momentum_Open_1', 'Momentum_High_1', 
-                                'EMA_Open', 'Volume_Change', 'SMA_Volume_3', 
-                                'Lagged_Open_1', 'Lagged_High_1', 'Lagged_Low_1', 
-                                'Lagged_Volume_1']
-    
-    # Ensure the DataFrame contains all feature-engineered columns
-    for feature in engineered_feature_names:
+    all_columns = ['Open', 'High', 'Low', 'Volume', 
+                   'High_Low_Range', 'Open_High_Range', 'Open_Low_Range', 
+                   'Rolling_Volatility', 'True_Range', 'SMA_Open_3', 
+                   'SMA_High_3', 'Momentum_Open_1', 'Momentum_High_1', 
+                   'EMA_Open', 'Volume_Change', 'SMA_Volume_3', 
+                   'Lagged_Open_1', 'Lagged_High_1', 'Lagged_Low_1', 
+                   'Lagged_Volume_1']
+
+    # Ensure the DataFrame contains all required columns
+    for feature in all_columns:
         if feature not in input_data.columns:
             input_data[feature] = np.nan
 
-    # Ensure columns match those used during training
-    input_data = input_data[engineered_feature_names].fillna(0)
+    # Fill NaN values with 0 or any other appropriate method
+    input_data = input_data.fillna(0)
+    
+    # Step 2: Ensure the input columns match the order of features used during training
+    input_data = input_data[all_columns]
     
     # Step 3: Make predictions using each model
     predictions = {

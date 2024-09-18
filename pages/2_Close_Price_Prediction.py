@@ -3,8 +3,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import mplfinance as mpf
-from datetime import datetime, timedelta
-import matplotlib.dates as mdates
+from datetime import datetime
+import matplotlib.colors as mcolors
+import os
 
 # Import functions from the other script
 from predictionModels.closepriceapi import make_predictions, calculate_engineered_features
@@ -22,112 +23,251 @@ def validate_inputs(open_price, high_price, low_price, volume):
         errors.append("Volume must be non-negative.")
     return errors
 
+
+# Function to fetch historical data from the datasets folder
+def fetch_historical_data(currency_pair, time_frame):
+    file_path = os.path.join('datasets', f'{currency_pair}_{time_frame}.csv')
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path, header=None)
+        if not all(col in ['Time', 'Open', 'High', 'Low', 'Close', 'Volume'] for col in df.columns[:6]):
+            df.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Volume']
+        return df
+    else:
+        st.error("Historical data not found for the selected currency pair and time frame.")
+        return None
+
+# Function to download a template CSV file
+def download_template():
+    template_data = {
+        "Time": [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+        "Open": [1.1837],
+        "High": [1.1851],
+        "Low": [1.1821],
+        "Close": [1.1839],
+        "Volume": [100000]
+    }
+    df_template = pd.DataFrame(template_data)
+    template_path = 'datasets/template.csv'
+    df_template.to_csv(template_path, index=False)
+    return template_path
+
+# Function to save uploaded file to datasets folder
+def save_uploaded_file(uploaded_file, currency_pair, time_frame):
+    directory = os.path.join('datasets', f'{currency_pair}_MetaTrader_CSV')
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    file_path = os.path.join(directory, f'{currency_pair}_{time_frame}.csv')
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    return file_path
+
 # Streamlit interface
-st.title('Forex Prediction Application')
+st.title('Forex Close Price Prediction')
 
-st.write("Enter the feature values below. Ensure that values are within reasonable ranges.")
+# Sidebar for user inputs
+st.sidebar.header("Configuration")
 
-# User inputs
-open_price = st.number_input('Open Price', min_value=0.0, format="%.4f")
-high_price = st.number_input('High Price', min_value=0.0, format="%.4f")
-low_price = st.number_input('Low Price', min_value=0.0, format="%.4f")
-volume = st.number_input('Volume', min_value=0)
+# Option to upload file or select from existing datasets
+upload_option = st.sidebar.radio("Choose Data Source", ("Upload CSV", "Select Existing"))
 
-# Time interval selection
-st.subheader("Select Time Interval for Prediction:")
-time_interval = st.selectbox(
-    "Choose Time Interval",
-    ("30 mins", "1 hr", "4 hrs", "1 day"),
-    index=0,
-    help="Select the time interval for which you want to predict the stock price direction."
-)
+if upload_option == "Upload CSV":
+    uploaded_file = st.sidebar.file_uploader("Upload Historical Data (CSV)", type=["csv"])
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file, header=None)
+        if df.shape[1] < 6:
+            st.error("Uploaded file does not have enough columns. Required columns: Time, Open, High, Low, Close, Volume.")
+            st.stop()
+        first_row = df.iloc[0]
+        if all(item in ['Time', 'Open', 'High', 'Low', 'Close', 'Volume'] for item in first_row[:6]):
+            df.columns = first_row
+            df = df[1:]
+        else:
+            df.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Volume']
+        historical_data = df
+    else:
+        historical_data = None
+else:
+    currency_pair = st.sidebar.selectbox("Select Currency Pair", ["EURUSD", "GBPUSD", "USDJPY"])
+    time_frame = st.sidebar.selectbox("Select Time Frame", ["M1", "M15", "M30", "H1", "H4", "D1"])
+    historical_data = fetch_historical_data(currency_pair, time_frame)
 
-# Validate inputs
-errors = validate_inputs(open_price, high_price, low_price, volume)
-if errors:
-    st.write("### Validation Errors")
-    for error in errors:
-        st.write(f"- {error}")
-    st.stop()
+# Limit the number of rows for prediction (max 90 rows)
+num_rows = st.sidebar.slider("Number of Rows for Prediction", min_value=1, max_value=90, value=30)
 
-user_inputs = {
-    'Open': open_price,
-    'High': high_price,
-    'Low': low_price,
-    'Volume': volume
-}
+# If data is uploaded via file upload or selected from datasets
+if historical_data is not None:
+    st.header("Historical Data")
+    st.write("You can edit the data below to customize your predictions.")
+    
+    # Show only the specified number of rows for editing, ordered by most recent date
+    editable_data = historical_data.tail(num_rows).copy()
+    editable_data = editable_data.iloc[::-1].reset_index(drop=True)
+    
+    # Allow users to edit the data directly
+    editable_data = st.data_editor(editable_data, num_rows="dynamic")
+    
+    # # # Option to remove the target column (e.g., 'Close')
+    # # remove_target = st.checkbox("Remove Target Column (Close)")
+    # removed_target = editable_data.drop(columns=['Close']) if remove_target and 'Close' in editable_data.columns else editable_data
+    
+    # st.subheader("Edited Historical Data")
+    # st.dataframe(removed_target)
 
-# Display user inputs
-st.write('### Input Values')
-st.write(user_inputs)
+    # Customize input for prediction (editing first row of the data)
+    st.subheader("Customize Input for Prediction")
+    first_row_data = editable_data.iloc[0]
 
-# Make predictions
-st.write('## Predictions')
-predictions = make_predictions(user_inputs)
-for model, prediction in predictions.items():
-    st.write(f"{model}: {prediction:.5f}")
+    open_price = st.number_input('Open Price', value=float(first_row_data['Open']), format="%.5f")
+    high_price = st.number_input('High Price', value=float(first_row_data['High']), format="%.5f")
+    low_price = st.number_input('Low Price', value=float(first_row_data['Low']), format="%.5f")
+    volume = st.number_input('Volume', value=int(first_row_data['Volume']), min_value=0)
 
-# Plotting historical data
-st.write('## Historical Data Visualization')
+    # Validate inputs
+    errors = validate_inputs(open_price, high_price, low_price, volume)
+    if errors:
+        st.write("### Validation Errors")
+        for error in errors:
+            st.write(f"- {error}")
+        st.stop()
 
-# Simulate historical data
-date_range = pd.date_range(start=datetime.now() - timedelta(days=30), periods=30, freq='D')
-data = {
-    'Time': date_range,
-    'Open': np.random.uniform(1.1000, 1.1100, size=30),
-    'High': np.random.uniform(1.1000, 1.1200, size=30),
-    'Low': np.random.uniform(1.0900, 1.1100, size=30),
-    'Close': np.random.uniform(1.0950, 1.1150, size=30),
-    'Volume': np.random.randint(1000, 2000, size=30)
-}
-df = pd.DataFrame(data)
-df.set_index('Time', inplace=True)
+    # Update the first row with new user inputs
+    user_input_row = [first_row_data['Time'], open_price, high_price, low_price, first_row_data['Close'], volume]
+    new_data = pd.DataFrame([user_input_row], columns=editable_data.columns)
 
-# Candlestick chart
-st.write('### Candlestick Chart')
-fig, ax = plt.subplots(figsize=(12, 6))
-mpf.plot(df, type='candle', volume=True, style='charles', title='Candlestick Chart', ax=ax)
-st.pyplot(fig)
+    # Append the user input to the data and reorder by the most recent dates
+    updated_data = pd.concat([new_data, editable_data.iloc[1:]], ignore_index=True)
 
-# Line chart for closing prices
-st.write('### Closing Prices Over Time')
-fig, ax = plt.subplots(figsize=(12, 6))
-ax.plot(df.index, df['Close'], label='Close Price', color='blue', linewidth=2)
-ax.set_title('Closing Prices Over Time', fontsize=16)
-ax.set_xlabel('Time', fontsize=14)
-ax.set_ylabel('Close Price', fontsize=14)
-ax.legend()
-ax.grid(True)
-ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-plt.xticks(rotation=45)
-st.pyplot(fig)
+    st.success("Your input has been appended to the latest dataset.")
+    st.write(updated_data)
 
-# Feature engineering
-st.write('### Feature Engineering Insights')
-df_features = calculate_engineered_features(df.copy())
-st.write(df_features.describe())
+    # Button to trigger prediction
+    if st.button("Predict Close Price"):
+        st.write('## Predictions')
+        user_inputs = {
+            'Open': open_price,
+            'High': high_price,
+            'Low': low_price,
+            'Volume': volume
+        }
+        predictions = make_predictions(user_inputs)
+        
+        # Define a custom style for model predictions
+        st.markdown("""
+            <style>
+            .prediction-box {
+                background-color: #f0f4f8;
+                border-left: 6px solid #4CAF50;
+                padding: 10px;
+                margin-bottom: 10px;
+                border-radius: 8px;
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .model-name {
+                font-size: 18px;
+                font-weight: bold;
+                color: #333;
+            }
+            .prediction-value {
+                font-size: 16px;
+                color: #0275d8;
+                font-weight: bold;
+            }
+            </style>
+        """, unsafe_allow_html=True)
 
-# Custom styling
+        # Display predictions in a more organized and professional way
+        for model, prediction in predictions.items():
+            st.markdown(f"""
+                <div class="prediction-box">
+                    <span class="model-name">{model}:</span>
+                    <span class="prediction-value">{prediction:.5f}</span>
+                </div>
+            """, unsafe_allow_html=True)
+
+
+       
+
+    # Custom color map using 'TABLEAU_COLORS' for vibrant graphs
+    colors = list(mcolors.TABLEAU_COLORS.values())
+
+    # Plotting recent historical data
+    st.write('## Historical Data Visualization')
+
+    recent_data = updated_data.head(30)  # Show the most recent 30 rows
+    recent_data['Time'] = pd.to_datetime(recent_data['Time'], dayfirst=True)
+    recent_data.set_index('Time', inplace=True)
+    plotting_data = recent_data.sort_values(by='Time').head(30)
+
+    # 1. **Closing Prices Line Chart**
+    if 'Close' in recent_data.columns:
+        st.write('### Closing Prices Over Time')
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(recent_data.index, recent_data['Close'], label='Close Price', color=colors[0], linewidth=2)
+        ax.set_title('Closing Prices Over Time', fontsize=16)
+        ax.set_xlabel('Time', fontsize=14)
+        ax.set_ylabel('Close Price', fontsize=14)
+        ax.legend()
+        ax.grid(True, linestyle='--', alpha=0.7)
+        plt.xticks(rotation=45)
+        st.pyplot(fig)
+        st.info("This line chart shows the closing price of the asset over the last 30 periods. It helps visualize the general trend.")
+    else:
+        st.info("Closing price data is not available for the line chart.")
+
+    # 2. **Candlestick Chart with Volume**
+    st.write('### Candlestick Chart')
+    try:
+        fig, axlist = mpf.plot(plotting_data, type='candle', volume=True, style='charles', title='Candlestick Chart',
+                            mav=(7, 14), # Add 7 and 14-period moving averages
+                            returnfig=True)
+        st.pyplot(fig)
+        st.info("Candlestick charts represent the open, high, low, and close prices. The green and red bars reflect the price movement within a time period, and the moving averages (7, 14 periods) help identify trends.")
+    except Exception as e:
+        st.error(f"Error plotting candlestick chart: {e}")
+
+    # Feature engineering insights
+    st.write('### Feature Engineering Insights')
+    if all(col in editable_data.columns for col in ['Open', 'High', 'Low', 'Close', 'Volume']):
+        df_features = calculate_engineered_features(editable_data.copy())
+        st.write(df_features.select_dtypes(include='number').describe())
+    else:
+        st.warning("Feature engineering requires 'Open', 'High', 'Low', 'Close', and 'Volume' columns.")
+else:
+    st.error("No historical data available. Please upload a CSV file or select an existing dataset.")
+
+# Download template button
+st.sidebar.subheader("Download Template")
+if st.sidebar.button("Download Template CSV"):
+    template_file_path = download_template()
+    with open(template_file_path, "rb") as f:
+        st.sidebar.download_button(
+            label="Download Template CSV",
+            data=f,
+            file_name="template.csv",
+            mime="text/csv"
+        )
+
+# Custom styling for the Streamlit app
 st.markdown("""
 <style>
-    .reportview-container {
-        background: #f5f5f5;
-    }
-    .block-container {
-        padding: 2rem;
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        padding: 15px 32px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-        border-radius: 8px;
-    }
+.reportview-container {
+   background: #f5f5f5;
+}
+.block-container {
+   padding: 2rem;
+}
+.stButton>button {
+   background-color: #4CAF50;
+   color: white;
+   border: none;
+   padding: 15px 32px;
+   text-align: center;
+   text-decoration: none;
+   display: inline-block;
+   font-size: 16px;
+   margin: 4px 2px;
+   cursor: pointer;
+   border-radius: 8px;
+}
 </style>
 """, unsafe_allow_html=True)

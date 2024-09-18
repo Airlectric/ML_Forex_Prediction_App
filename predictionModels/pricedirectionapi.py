@@ -18,7 +18,11 @@ best_lgb = joblib.load(best_lgb_path_D1)
 # Function to calculate engineered features
 def calculate_engineered_features(df):
     # Moving Averages
-    df['SMA_7'] = df['Close'].rolling(window=7).mean()
+    if 'Close' in df.columns:
+        df['SMA_7'] = df['Close'].rolling(window=7).mean()
+    else:
+        print("Column 'Close' does not exist.")
+        print(df.columns)
     df['SMA_14'] = df['Close'].rolling(window=14).mean()
     df['EMA_7'] = df['Close'].ewm(span=7, adjust=False).mean()
 
@@ -51,7 +55,13 @@ def calculate_engineered_features(df):
         true_range = pd.DataFrame({'high_low': high_low, 'high_close': high_close, 'low_close': low_close}).max(axis=1)
         atr = true_range.rolling(window=window).mean()
         return atr
+    
     df['ATR_14'] = compute_atr(df['High'], df['Low'], df['Close'], window=14)
+
+    df['SMA_50'] = df['Close'].rolling(window=50).mean()
+    df['SMA_200'] = df['Close'].rolling(window=200).mean()
+    df['SMA_Cross'] = np.where(df['SMA_50'] > df['SMA_200'], 1, 0)
+
 
     # Stochastic Oscillator
     def compute_stochastic(close, low, high, window=14):
@@ -93,9 +103,11 @@ def predict_price_direction(input_data):
     df = calculate_engineered_features(df)
 
     # Drop unnecessary columns before prediction
-    features = ['Open', 'High', 'Low', 'Close', 'Volume', 'SMA_7', 'SMA_14', 'EMA_7', 'RSI', 'MA_20', 'Upper_Band', 
-                'Lower_Band', 'OBV', 'ATR_14', 'Stochastic_Oscillator', '1_day_return', '7_day_return', 
-                '14_day_return', 'Volume_Change', 'Volume_SMA_7']
+    features = ['Open', 'High', 'Low', 'Close', 'Volume',
+       '1_day_return', '7_day_return', '14_day_return', 'SMA_7', 'SMA_14',
+       'EMA_7', 'RSI', 'MA_20', 'Std_20', 'Upper_Band', 'Lower_Band', 'OBV',
+       'ATR_14', 'SMA_50', 'SMA_200', 'SMA_Cross', 'Volume_Change',
+       'Volume_SMA_7', 'Stochastic_Oscillator']
 
     X = df[features]
 
