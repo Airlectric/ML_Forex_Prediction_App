@@ -3,7 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.decomposition import PCA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.vector_ar.vecm import coint_johansen, VECM, select_order, select_coint_rank
 import os
 file_path = os.path.join('..','Historical Forex Data' ,'EURUSD_D1.csv')
@@ -40,7 +42,7 @@ def feature_engineering(df):
     df['Lagged_Open_1'] = df['Open'].shift(1)
     df['Lagged_High_1'] = df['High'].shift(1)
     df['Lagged_Low_1'] = df['Low'].shift(1)
-    df['Lagged_Volume_1'] = df['Volume'].shift(1)
+    df['Lagged_Volume_1'] = df['Volume'].shift(1) 
 
     # RSI Calculation
     window = 14
@@ -119,21 +121,64 @@ def train_vecm(train_data,freq='D'):
     return vecm_res
 
 
-def forecast(vecm_model,data, steps=5, freq='B'):
-    forecast = vecm_model.predict(steps=steps)
-    forecast_index = pd.date_range(start=data.index[-1] + pd.Timedelta(days=1), 
-                                   periods=steps, freq=freq)
-    forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=data.columns)
+def prepare_and_forecast_sarimax(data, n_periods=10):
+    
+    data.dropna(inplace=True)
+    
+    if not pd.api.types.is_datetime64_any_dtype(data.index):
+        raise ValueError("Data index must be a DateTime index.")
+    
+    data = data.asfreq('D')
+    
+    order = (1, 1, 1)
+    seasonal_order = (1, 1, 1, 7)
+
+    model = SARIMAX(data['Volume'], exog=data[['Close', 'Open', 'High', 'Low']], order=order, seasonal_order=seasonal_order)
+    model_fit = model.fit(disp=False)
+
+    last_exog = data[['Close', 'Open', 'High', 'Low']].iloc[-n_periods:]
+    
+    if last_exog.isnull().any().any():
+        print("NaN values found in exogenous variables:")
+        print(last_exog[last_exog.isnull().any(axis=1)])
+        return None
+
+    forecast_values = model_fit.forecast(steps=n_periods, exog=last_exog)
+
+    if isinstance(forecast_values, np.ndarray) and forecast_values.ndim > 1:
+        forecast_values = forecast_values.flatten()
+    forecast_values = forecast_values.to_frame(name='Forecasted_Volume')
+    last_date = data.index[-1]
+    forecast_index = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=n_periods, freq='B')
+    
+    # Create DataFrame with forecasted values
+    forecast_df = pd.DataFrame(forecast_values, index=forecast_index, columns=['Forecasted_Volume'])
     
     return forecast_df
 
 
-def evaluate_forecast(actual, predicted):
-    mae = np.mean(np.abs(actual - predicted))
-    mse = np.mean((actual - predicted) ** 2)
-    rmse = np.sqrt(mse)
-    mape = np.mean(np.abs((actual - predicted) / actual)) * 100
+def forecast(vecm_model,data, steps=5, freq='B',vol_df=None):
+    forecast = vecm_model.predict(steps=steps)
+    forecast_index = pd.date_range(start=data.index[-1] + pd.Timedelta(days=1), 
+                                   periods=steps, freq=freq)
+    forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=data.columns)
+
+    if 'Forecasted_Volume' in vol_df.columns:
+        forecast_df.drop(columns=['Volume'], inplace=True)
+        forecast_df['Volume'] = vol_df['Forecasted_Volume']
     
+    return forecast_df
+
+
+def evaluate_forecast(actual, forecast):
+
+    actual_aligned, forecast_aligned = actual.align(forecast, join='inner')
+
+    mae = mean_absolute_error(actual_aligned, forecast_aligned)
+    mse = mean_squared_error(actual_aligned, forecast_aligned)
+    rmse = np.sqrt(mse)
+    mape = np.mean(np.abs((actual_aligned - forecast_aligned) / actual_aligned)) * 100
+
     return mae, mse, rmse, mape
 
 def plot_forecast(actual_last, forecast_df):
@@ -194,13 +239,18 @@ def pipeline(filepath, steps=5, freq='D', prediction_freq='B', n_components=6):
     train_data = df_pca[:train_size]
     train_data = train_data.asfreq(freq) 
     test_data = df_pca[train_size:]
+
     
     # Step 6: Train the VECM model
     vecm_model = train_vecm(train_data,freq=freq)
+
+    volume_df=prepare_and_forecast_sarimax(train_data, n_periods=steps)
+    print(volume_df)
+    print(type(volume_df))
     
     # Step 7: Forecasting
-    forecast_df = forecast(vecm_model,train_data, steps=steps, freq=prediction_freq)
-    
+    forecast_df = forecast(vecm_model,train_data, steps=steps, freq=prediction_freq,vol_df=volume_df)
+    print(forecast_df['Volume'])
     # Step 8: Evaluate forecast performance
     actual = test_data.iloc[:steps]
     for col in actual.columns:
@@ -214,5 +264,5 @@ def pipeline(filepath, steps=5, freq='D', prediction_freq='B', n_components=6):
 
 
 # Example usage
-forecast_result = pipeline(file_path, steps=10, freq='D', prediction_freq='B', n_components=6)
+forecast_result = pipeline(file_path, steps=10, freq='D', prediction_freq='B', n_components=3)
 print(forecast_result)

@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from statsmodels.tsa.api import VAR
 from statsmodels.tsa.stattools import adfuller
 import os
@@ -208,14 +209,14 @@ def forecast_var(model_fit,n_steps,original_data ,training_data):
     return inverse_forecast_df
 
 def evaluate_forecast(actual, forecast):
-    """
-    Calculate evaluation metrics such as MAE, MSE, RMSE, and MAPE.
-    """
-    mae = np.mean(np.abs(actual - forecast))
-    mse = np.mean((actual - forecast) ** 2)
+
+    actual_aligned, forecast_aligned = actual.align(forecast, join='inner')
+
+    mae = mean_absolute_error(actual_aligned, forecast_aligned)
+    mse = mean_squared_error(actual_aligned, forecast_aligned)
     rmse = np.sqrt(mse)
-    mape = np.mean(np.abs((actual - forecast) / actual)) * 100
-    
+    mape = np.mean(np.abs((actual_aligned - forecast_aligned) / actual_aligned)) * 100
+
     return mae, mse, rmse, mape
 
 def plot_forecast(actual_last, forecast_df):
@@ -289,10 +290,10 @@ def run_pipeline(df, steps=20, freq='4h', n_components=4):
     actual_last = test_df.iloc[:steps]
     for column in forecast_df.columns:
         mae, mse, rmse, mape = evaluate_forecast(actual_last[column], forecast_df[column])
-        print(f"{column} - MAE: {mae:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.2f}%")
+        print(f"{column} - MAE: {mae:.4f},MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.2f}%")
     
     # Step 8: Plot results
     plot_forecast(actual_last, forecast_df)
 
 # Call the pipeline
-run_pipeline(file_path, steps=10, freq='D', n_components=6)
+run_pipeline(file_path, steps=10, freq='D', n_components=3)
