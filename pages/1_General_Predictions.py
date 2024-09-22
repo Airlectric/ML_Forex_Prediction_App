@@ -51,7 +51,7 @@ if upload_option == "Upload CSV":
         historical_data = None
 else:
     currency_pair = st.sidebar.selectbox("Select Currency Pair", ["EURUSD", "GBPUSD", "USDJPY"])
-    time_frame = st.sidebar.selectbox("Select Time Frame", ["M1", "M15", "M30", "H1", "H4", "D1"])
+    time_frame = st.sidebar.selectbox("Select Time Frame", ["M30", "H1", "H4", "D1"])
     historical_data = fetch_historical_data(currency_pair, time_frame)
 
 # Custom styling for the Streamlit app
@@ -75,12 +75,6 @@ st.markdown("""
    margin: 4px 2px;
    cursor: pointer;
    border-radius: 8px;
-}
-h2 {
-   color: #333;
-}
-h3 {
-   color: #555;
 }
 </style>
 """, unsafe_allow_html=True)
