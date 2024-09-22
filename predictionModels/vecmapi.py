@@ -136,7 +136,7 @@ def apply_pca(df, n_components=6):
 
 def train_vecm(train_data,freq='D'):
     train_data.dropna(inplace=True)
-    train_data.index.freq = freq
+    print(train_data.index.freq)
     lag_order = select_order(data=train_data, maxlags=5, deterministic="ci", seasons=5)
     rank_test = select_coint_rank(train_data, det_order=1, k_ar_diff=lag_order.aic, method="trace", signif=0.1)
     
