@@ -109,7 +109,7 @@ if historical_data is not None:
     **Frequency (freq)**: This represents the time interval between the data points in your dataset.
     For example, if your dataset is daily, the frequency should be 'D' (daily).
     """)
-    freq = st.selectbox("Select the data frequency", options=['D', 'H', 'B'], index=0)
+    freq = st.selectbox("Select the data frequency", options=['min', '15min', '30min','1h','4h','D'], index=0)
 
     # Explanation for 'prediction_freq'
     st.info("""

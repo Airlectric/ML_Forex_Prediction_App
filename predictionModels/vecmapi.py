@@ -47,6 +47,22 @@ def load_data(filepath, freq='D'):
 
     return df
 
+def index_freq(raw, freq='D'):
+  
+    try:
+        raw['Time'] = pd.to_datetime(raw['Time'], format='%Y-%d-%m %H:%M', errors='raise')
+    except ValueError:
+        try:
+            raw['Time'] = pd.to_datetime(raw['Time'], format='%Y-%m-%d %H:%M', errors='raise')
+        except ValueError:
+            raw['Time'] = pd.to_datetime(raw['Time'], errors='coerce')
+    raw.dropna(subset=['Time'], inplace=True)
+    raw.set_index('Time', inplace=True)
+    df = raw.resample(freq).mean(numeric_only=True)
+    df.fillna(method='ffill', inplace=True)
+    df.index.freq = freq
+    return df
+
 
 
 def feature_engineering(df):
@@ -129,14 +145,14 @@ def apply_pca(df, n_components=6):
                              pca_df.reset_index(drop=True)], axis=1)
     combined_df['Time'] = pd.to_datetime(combined_df['Time'])
     combined_df.set_index('Time', inplace=True)
-    
+    combined_df.index.freq = df.index.freq
+    print("combined_df:",combined_df.index.freq)
     return combined_df
 
 
 
 def train_vecm(train_data,freq='D'):
     train_data.dropna(inplace=True)
-    print(train_data.index.freq)
     lag_order = select_order(data=train_data, maxlags=5, deterministic="ci", seasons=5)
     rank_test = select_coint_rank(train_data, det_order=1, k_ar_diff=lag_order.aic, method="trace", signif=0.1)
     
@@ -267,25 +283,28 @@ def pipeline(filepath,train_test_ratio, steps=5, freq='D', prediction_freq='B', 
     
     # Step 3: Apply PCA
     df_pca = apply_pca(df, n_components=n_components)
-    
-    # Step 4: Split into train and test sets
-    train_size = int(train_test_ratio * len(df_pca))
-    train_data = df_pca[:train_size]
-    train_data = train_data.asfreq(freq) 
-    test_data = df_pca[train_size:]
+    df_pca_reset = df_pca.reset_index()
+
+    train_size = int(train_test_ratio * len(df_pca_reset))
+    train_data = df_pca_reset[:train_size]
+    test_data = df_pca_reset[train_size:]
+
+    train_data = index_freq(train_data,freq=freq)
+    test_data = index_freq(test_data,freq=freq)
+
+    print('train',train_data.index.freq)
+    print('train',test_data.index.freq)
 
     
     # Step 6: Train the VECM model
     vecm_model = train_vecm(train_data,freq=freq)
 
     volume_df=prepare_and_forecast_sarimax(train_data, n_periods=steps)
-    print(volume_df)
-    print(type(volume_df))
-    
-    # Step 7: Forecasting
+  
+
     forecast_df = forecast(vecm_model,train_data, steps=steps, freq=prediction_freq,vol_df=volume_df)
     print(forecast_df['Volume'])
-    # Step 8: Evaluate forecast performance
+   
     actual = test_data.iloc[:steps]
     # for col in actual.columns:
     #     mae, mse, rmse, mape = evaluate_forecast(actual[col], forecast_df[col])
