@@ -7,20 +7,46 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.decomposition import PCA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.vector_ar.vecm import coint_johansen, VECM, select_order, select_coint_rank
-import os
-file_path = os.path.join('..','Historical Forex Data' ,'EURUSD_D1.csv')
+import streamlit as st
+import plotly.graph_objects as go
+# import os
+# file_path = os.path.join('..','Historical Forex Data' ,'EURUSD_D1.csv')
 
 
 def load_data(filepath, freq='D'):
-    raw = pd.read_csv(filepath)
-    raw['Time'] = pd.to_datetime(raw['Time'], dayfirst=True)
+    raw = pd.read_csv(filepath, header=None)
+
+    # Set column names if the first row has headers
+    if raw.iloc[0].str.contains('Time').any():
+        raw.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Volume']
+        raw = raw[1:]
+    else:
+        raw.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Volume']
+    # Attempt to convert 'Time' column to datetime with multiple formats
+    try:
+        raw['Time'] = pd.to_datetime(raw['Time'], format='%Y-%d-%m %H:%M', errors='raise')
+    except ValueError:
+        try:
+            # Handle a more common format in case the first fails
+            raw['Time'] = pd.to_datetime(raw['Time'], format='%Y-%m-%d %H:%M', errors='raise')
+        except ValueError:
+            # Handle mixed formats or unknown patterns with 'coerce' to NaT
+            raw['Time'] = pd.to_datetime(raw['Time'], errors='coerce')
+
+    # Drop rows where 'Time' could not be parsed (NaT values)
+    raw.dropna(subset=['Time'], inplace=True)
     raw.set_index('Time', inplace=True)
+
+    # Resample the data at the specified frequency
+    df = raw.resample(freq).mean(numeric_only=True)
     
-    # Resampling and filling missing data
-    df = raw.resample(freq).mean()
+    # Forward fill any missing values
     df.fillna(method='ffill', inplace=True)
+    
     df.index.freq = freq
+
     return df
+
 
 
 def feature_engineering(df):
@@ -122,6 +148,8 @@ def train_vecm(train_data,freq='D'):
 
 
 def prepare_and_forecast_sarimax(data, n_periods=10):
+
+    n_periods = n_periods * 2
     
     data.dropna(inplace=True)
     
@@ -169,10 +197,14 @@ def forecast(vecm_model,data, steps=5, freq='B',vol_df=None):
     
     return forecast_df
 
-
 def evaluate_forecast(actual, forecast):
+    # Get the columns of interest based on the DataFrame passed
+    columns_of_interest = actual.columns.intersection(['Open', 'High', 'Low', 'Close', 'Volume']).tolist()
+    
+    actual_filtered = actual[columns_of_interest]
+    forecast_filtered = forecast[columns_of_interest]
 
-    actual_aligned, forecast_aligned = actual.align(forecast, join='inner')
+    actual_aligned, forecast_aligned = actual_filtered.align(forecast_filtered, join='inner')
 
     mae = mean_absolute_error(actual_aligned, forecast_aligned)
     mse = mean_squared_error(actual_aligned, forecast_aligned)
@@ -180,6 +212,8 @@ def evaluate_forecast(actual, forecast):
     mape = np.mean(np.abs((actual_aligned - forecast_aligned) / actual_aligned)) * 100
 
     return mae, mse, rmse, mape
+
+
 
 def plot_forecast(actual_last, forecast_df):
     """
@@ -224,7 +258,7 @@ def plot_forecast(actual_last, forecast_df):
 
 
 
-def pipeline(filepath, steps=5, freq='D', prediction_freq='B', n_components=6):
+def pipeline(filepath,train_test_ratio, steps=5, freq='D', prediction_freq='B', n_components=6):
     # Step 1: Load and preprocess data
     df = load_data(filepath, freq=freq)
     
@@ -235,7 +269,7 @@ def pipeline(filepath, steps=5, freq='D', prediction_freq='B', n_components=6):
     df_pca = apply_pca(df, n_components=n_components)
     
     # Step 4: Split into train and test sets
-    train_size = int(0.999 * len(df_pca))
+    train_size = int(train_test_ratio * len(df_pca))
     train_data = df_pca[:train_size]
     train_data = train_data.asfreq(freq) 
     test_data = df_pca[train_size:]
@@ -253,16 +287,96 @@ def pipeline(filepath, steps=5, freq='D', prediction_freq='B', n_components=6):
     print(forecast_df['Volume'])
     # Step 8: Evaluate forecast performance
     actual = test_data.iloc[:steps]
-    for col in actual.columns:
-        mae, mse, rmse, mape = evaluate_forecast(actual[col], forecast_df[col])
-        print(f"\nMetrics for '{col}':")
-        print(f"MAE: {mae:.4f}, MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.2f}%")
+    # for col in actual.columns:
+    #     mae, mse, rmse, mape = evaluate_forecast(actual[col], forecast_df[col])
+    #     print(f"\nMetrics for '{col}':")
+    #     print(f"MAE: {mae:.4f}, MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.2f}%")
 
     plot_forecast(test_data, forecast_df)
     
-    return forecast_df
+    return forecast_df,test_data
 
 
-# Example usage
-forecast_result = pipeline(file_path, steps=10, freq='D', prediction_freq='B', n_components=3)
-print(forecast_result)
+
+def plot_forecast_streamlit(actual_last, forecast_df):
+    """
+    Plots the actual vs forecasted values for common columns between the actual and forecasted data in an interactive way using Plotly in Streamlit.
+
+    Parameters:
+    - actual_last: pd.DataFrame of actual values (last N data points)
+    - forecast_df: pd.DataFrame of forecasted values
+    """
+
+    # Find the common columns between actual and forecasted data
+    common_columns = set(actual_last.columns).intersection(set(forecast_df.columns))
+
+    # Prepare the data for plotting by filtering out unwanted columns
+    plot_data = {}
+    exclude_columns = [
+        'Principal Component 0', 'Principal Component 1', 'Principal Component 2', 
+        'Principal Component 3', 'Principal Component 4', 'Principal Component 5', 
+        'Principal Component 6', 'Principal Component 7', 'Month', 'Day_of_Week'
+    ]
+    
+    for column in common_columns:
+        if column not in exclude_columns:
+            actual_values = actual_last[column]
+            forecasted_values = forecast_df[column]
+            plot_data[column] = (actual_values, forecasted_values)
+
+    # Create a subplot for each common column
+    for column, (actual, forecasted) in plot_data.items():
+        st.write(f"### Actual vs Forecasted: {column}")
+
+        # Create a Plotly figure
+        fig = go.Figure()
+
+        # Add actual values line
+        fig.add_trace(go.Scatter(
+            x=actual.index, 
+            y=actual, 
+            mode='lines+markers',
+            name='Actual',
+            line=dict(color='blue', width=2),
+            marker=dict(color='blue', size=6, symbol='circle', line=dict(color='black', width=1)),
+            hovertemplate='Date: %{x}<br>Actual Value: %{y}<extra></extra>'
+        ))
+
+        # Add forecasted values line
+        fig.add_trace(go.Scatter(
+            x=forecasted.index, 
+            y=forecasted, 
+            mode='lines+markers',
+            name='Forecasted',
+            line=dict(color='orange', dash='dash', width=2),
+            marker=dict(color='orange', size=6, symbol='x', line=dict(color='black', width=1)),
+            hovertemplate='Date: %{x}<br>Forecasted Value: %{y}<extra></extra>'
+        ))
+
+        # Highlight where forecast diverges from actual values
+        divergences = forecasted - actual
+        divergence_points = divergences[abs(divergences) > divergences.mean()].index
+        fig.add_trace(go.Scatter(
+            x=divergence_points, 
+            y=forecasted.loc[divergence_points], 
+            mode='markers', 
+            name='Divergence Points',
+            marker=dict(color='red', size=10, symbol='triangle-down', line=dict(color='black', width=1)),
+            hovertemplate='Date: %{x}<br>Divergence Value: %{y}<extra></extra>'
+        ))
+
+        # Update layout for interactivity and clarity
+        fig.update_layout(
+            title=f'Actual vs Forecasted: {column}',
+            xaxis_title='Date',
+            yaxis_title=column,
+            template='plotly_white',
+            hovermode='x',
+            legend_title="Legend",
+            xaxis_rangeslider_visible=True  # Adds the range slider for interactive zoom
+        )
+
+        # Display the plot in Streamlit
+        st.plotly_chart(fig)
+
+

@@ -260,17 +260,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-# Download template button
-st.sidebar.subheader("Download Template")
-if st.sidebar.button("Download Template CSV"):
-    template_file_path = download_template()
-    with open(template_file_path, "rb") as f:
-        st.sidebar.download_button(
-            label="Download Template CSV",
-            data=f,
-            file_name="template.csv",
-            mime="text/csv"
-        )
+
 
 # Custom styling for the Streamlit app
 st.markdown("""
