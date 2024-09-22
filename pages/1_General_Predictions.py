@@ -104,12 +104,6 @@ if historical_data is not None:
     """)
     steps = st.slider("Select the number of steps ahead for prediction", 1, 20, 5)
 
-    # Explanation for 'freq'
-    st.info("""
-    **Frequency (freq)**: This represents the time interval between the data points in your dataset.
-    For example, if your dataset is daily, the frequency should be 'D' (daily).
-    """)
-    freq = st.selectbox("Select the data frequency", options=['min', '15min', '30min','1h','4h','D'], index=0)
 
     # Explanation for 'prediction_freq'
     st.info("""
@@ -139,7 +133,7 @@ if historical_data is not None:
         edited_df.to_csv(file_path, index=False, header=False)  # Save without headers
         
         # Run the prediction pipeline with the CSV file
-        forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps, freq=freq, prediction_freq=prediction_freq, n_components=n_components)
+        forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps, freq='D', prediction_freq=prediction_freq, n_components=n_components)
 
         if forecast_result is not None and not forecast_result.empty:
             # Update the session state with the new data
