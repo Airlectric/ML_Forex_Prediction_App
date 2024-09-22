@@ -142,14 +142,14 @@ if historical_data is not None:
     """)
 
     # Select box for seasons
-    seasons = st.selectbox("Select number of seasons", options=[1, 2, 5, 12, 20, 252], index=0)
-
+    seasons = st.selectbox("Select number of seasons", options=[1, 2, 5, 12, 20, 252], index=2)
+    print('season:',seasons)
     # Explanation for 'prediction_freq'
     st.info("""
     **Prediction Frequency**: This specifies the frequency of the forecasted data. 
     For example, 'B' for business days, 'D' for daily.
     """)
-    prediction_freq = st.selectbox("Select prediction frequency", options=['30min','H','4H','D','B'], index=2)
+    prediction_freq = st.selectbox("Select prediction frequency", options=['30min','H','4H','D','B'], index=4)
 
     # Explanation for 'n_components'
     st.info("""
@@ -173,7 +173,7 @@ if historical_data is not None:
             
             time.sleep(3) 
 
-            forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps,seasons=seasons, freq='D', prediction_freq=prediction_freq, n_components=n_components)
+            forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps,season=seasons, freq='D', prediction_freq=prediction_freq, n_components=n_components)
 
             if forecast_result is not None and not forecast_result.empty:
                 st.success("Prediction complete! 📊 Your forex forecast is ready.")

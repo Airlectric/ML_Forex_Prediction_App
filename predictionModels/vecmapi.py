@@ -151,9 +151,9 @@ def apply_pca(df, n_components=6):
 
 
 
-def train_vecm(train_data,freq='D',seasons=5):
+def train_vecm(train_data,freq='D',season=5):
     train_data.dropna(inplace=True)
-    lag_order = select_order(data=train_data, maxlags=5, deterministic="ci", seasons=seasons)
+    lag_order = select_order(data=train_data, maxlags=5, deterministic="ci", seasons=season)
     rank_test = select_coint_rank(train_data, det_order=1, k_ar_diff=lag_order.aic, method="trace", signif=0.1)
     
     vecm_model = VECM(train_data, deterministic="ci", k_ar_diff=lag_order.aic, 
@@ -274,7 +274,7 @@ def plot_forecast(actual_last, forecast_df):
 
 
 
-def pipeline(filepath,train_test_ratio, steps=5, seasons=5, freq='D', prediction_freq='B', n_components=6):
+def pipeline(filepath,train_test_ratio, steps=5, season=5, freq='D', prediction_freq='B', n_components=6):
     # Step 1: Load and preprocess data
     df = load_data(filepath, freq=freq)
     
@@ -292,7 +292,7 @@ def pipeline(filepath,train_test_ratio, steps=5, seasons=5, freq='D', prediction
     train_data = index_freq(train_data,freq=freq)
     test_data = index_freq(test_data,freq=freq)
     
-    vecm_model = train_vecm(train_data,freq=freq, seasons=seasons)
+    vecm_model = train_vecm(train_data,freq=freq,season=season)
 
     volume_df=prepare_and_forecast_sarimax(train_data, n_periods=steps, pred_freq=prediction_freq)
   
