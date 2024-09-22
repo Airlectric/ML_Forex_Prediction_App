@@ -151,9 +151,9 @@ def apply_pca(df, n_components=6):
 
 
 
-def train_vecm(train_data,freq='D'):
+def train_vecm(train_data,freq='D',seasons=5):
     train_data.dropna(inplace=True)
-    lag_order = select_order(data=train_data, maxlags=5, deterministic="ci", seasons=5)
+    lag_order = select_order(data=train_data, maxlags=5, deterministic="ci", seasons=seasons)
     rank_test = select_coint_rank(train_data, det_order=1, k_ar_diff=lag_order.aic, method="trace", signif=0.1)
     
     vecm_model = VECM(train_data, deterministic="ci", k_ar_diff=lag_order.aic, 
@@ -163,7 +163,7 @@ def train_vecm(train_data,freq='D'):
     return vecm_res
 
 
-def prepare_and_forecast_sarimax(data, n_periods=10):
+def prepare_and_forecast_sarimax(data, n_periods=10,pred_freq=5):
 
     n_periods = n_periods * 2
     
@@ -193,7 +193,7 @@ def prepare_and_forecast_sarimax(data, n_periods=10):
         forecast_values = forecast_values.flatten()
     forecast_values = forecast_values.to_frame(name='Forecasted_Volume')
     last_date = data.index[-1]
-    forecast_index = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=n_periods, freq='B')
+    forecast_index = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=n_periods, freq=pred_freq)
     
     # Create DataFrame with forecasted values
     forecast_df = pd.DataFrame(forecast_values, index=forecast_index, columns=['Forecasted_Volume'])
@@ -274,7 +274,7 @@ def plot_forecast(actual_last, forecast_df):
 
 
 
-def pipeline(filepath,train_test_ratio, steps=5, freq='D', prediction_freq='B', n_components=6):
+def pipeline(filepath,train_test_ratio, steps=5, seasons=5, freq='D', prediction_freq='B', n_components=6):
     # Step 1: Load and preprocess data
     df = load_data(filepath, freq=freq)
     
@@ -291,19 +291,13 @@ def pipeline(filepath,train_test_ratio, steps=5, freq='D', prediction_freq='B', 
 
     train_data = index_freq(train_data,freq=freq)
     test_data = index_freq(test_data,freq=freq)
-
-    print('train',train_data.index.freq)
-    print('train',test_data.index.freq)
-
     
-    # Step 6: Train the VECM model
-    vecm_model = train_vecm(train_data,freq=freq)
+    vecm_model = train_vecm(train_data,freq=freq, seasons=seasons)
 
-    volume_df=prepare_and_forecast_sarimax(train_data, n_periods=steps)
+    volume_df=prepare_and_forecast_sarimax(train_data, n_periods=steps, pred_freq=prediction_freq)
   
 
     forecast_df = forecast(vecm_model,train_data, steps=steps, freq=prediction_freq,vol_df=volume_df)
-    print(forecast_df['Volume'])
    
     actual = test_data.iloc[:steps]
     # for col in actual.columns:
@@ -311,7 +305,7 @@ def pipeline(filepath,train_test_ratio, steps=5, freq='D', prediction_freq='B', 
     #     print(f"\nMetrics for '{col}':")
     #     print(f"MAE: {mae:.4f}, MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.2f}%")
 
-    plot_forecast(test_data, forecast_df)
+    # plot_forecast(test_data, forecast_df)
     
     return forecast_df,test_data
 

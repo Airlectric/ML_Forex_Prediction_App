@@ -126,13 +126,30 @@ if historical_data is not None:
     """)
     steps = st.slider("Select the number of steps ahead for prediction", 1, 20, 5)
 
+    # Explanation for 'seasons'
+    st.info("""
+    **Seasons**: This parameter defines the number of seasonal cycles to consider in your analysis. 
+    For Forex data, this helps capture recurring patterns over time.
+
+    - **12-Hour Seasonality**: Use `2` to represent two 12-hour periods in a day.
+    - **24-Hour Seasonality**: Use `1` to represent one full day (24 hours).
+    - **Weekly Seasonality**: Use `5` to represent the five trading days in a week (Monday to Friday).
+    - **Monthly Seasonality**: Use `20` to represent approximately four weeks in a month (5 trading days per week * 4 weeks).
+    - **Annual Seasonality**: Use `252` to represent the approximate number of trading days in a year.
+    - **Monthly Seasonality (by months)**: Use `12` to represent the twelve months of the year.
+
+    Choosing the right value for seasons allows you to analyze how currency pairs behave during specific timeframes, helping you make more informed trading decisions.
+    """)
+
+    # Select box for seasons
+    seasons = st.selectbox("Select number of seasons", options=[1, 2, 5, 12, 20, 252], index=0)
 
     # Explanation for 'prediction_freq'
     st.info("""
     **Prediction Frequency**: This specifies the frequency of the forecasted data. 
     For example, 'B' for business days, 'D' for daily.
     """)
-    prediction_freq = st.selectbox("Select prediction frequency", options=['D', 'H', 'B'], index=2)
+    prediction_freq = st.selectbox("Select prediction frequency", options=['30min','H','4H','D','B'], index=2)
 
     # Explanation for 'n_components'
     st.info("""
@@ -156,7 +173,7 @@ if historical_data is not None:
             
             time.sleep(3) 
 
-            forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps, freq='D', prediction_freq=prediction_freq, n_components=n_components)
+            forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps,seasons=seasons, freq='D', prediction_freq=prediction_freq, n_components=n_components)
 
             if forecast_result is not None and not forecast_result.empty:
                 st.success("Prediction complete! 📊 Your forex forecast is ready.")
@@ -347,3 +364,37 @@ if template_file_path:
             file_name="template.csv",
             mime="text/csv"
         )
+
+st.sidebar.markdown("""
+<div class="cta-container" style="
+    text-align: center;
+    background-color: #004080;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin: 20px 0;
+">
+    <h2 style="
+        font-size: 2em;
+        margin-bottom: 10px;
+        color: #ffa500;
+    ">Get Real-Time Forex Data Now!</h2>
+    <p style="
+        font-size: 1.2em;
+        margin-bottom: 20px;
+    ">
+        Stay ahead of the market by accessing up-to-the-minute forex data. Click below to explore live trading data you can download for forecasting!
+    </p>
+    <a href="https://data.forexsb.com" target="_blank" style="
+        background-color: #ffa500;
+        color: white;
+        padding: 12px 25px;
+        font-size: 1.2em;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s ease-in-out;
+    " onMouseOver="this.style.backgroundColor='#ff8500'" onMouseOut="this.style.backgroundColor='#ffa500'">Visit ForexSB for Live Data(MetaTraderCSV)</a>
+</div>
+""", unsafe_allow_html=True)

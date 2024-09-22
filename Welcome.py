@@ -1,4 +1,6 @@
 import streamlit as st
+import threading
+from downloader import periodic_download
 
 # Custom CSS for styling and responsiveness
 st.markdown("""
@@ -114,6 +116,8 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+threading.Thread(target=periodic_download, daemon=True).start()
 
 # Sidebar functionality
 if 'sidebar_open' not in st.session_state:

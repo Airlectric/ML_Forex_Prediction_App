@@ -310,3 +310,37 @@ st.markdown("""
 
 </style>
 """, unsafe_allow_html=True)
+
+st.sidebar.markdown("""
+<div class="cta-container" style="
+    text-align: center;
+    background-color: #004080;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin: 20px 0;
+">
+    <h2 style="
+        font-size: 2em;
+        margin-bottom: 10px;
+        color: #ffa500;
+    ">Get Real-Time Forex Data Now!</h2>
+    <p style="
+        font-size: 1.2em;
+        margin-bottom: 20px;
+    ">
+        Stay ahead of the market by accessing up-to-the-minute forex data. Click below to explore live trading data you can download for forecasting!
+    </p>
+    <a href="https://data.forexsb.com" target="_blank" style="
+        background-color: #ffa500;
+        color: white;
+        padding: 12px 25px;
+        font-size: 1.2em;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s ease-in-out;
+    " onMouseOver="this.style.backgroundColor='#ff8500'" onMouseOut="this.style.backgroundColor='#ffa500'">Visit ForexSB for Live Data(MetaTraderCSV)</a>
+</div>
+""", unsafe_allow_html=True)

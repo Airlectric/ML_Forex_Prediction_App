@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime
+from datetime import datetime,timedelta
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -9,6 +9,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
+
+FILE_FRESHNESS_THRESHOLD = timedelta(hours=4)
 
 def download_historical_forex_data(period):
     base_url = "https://data.forexsb.com"
@@ -97,32 +99,43 @@ def download_historical_forex_data(period):
     driver.quit()
     print("Finished downloading all files.")
 
-def main():
+
+
+def is_file_stale(file_path):
+    """Check if the file is older than the freshness threshold."""
+    if os.path.exists(file_path):
+        file_mod_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+        return datetime.now() - file_mod_time > FILE_FRESHNESS_THRESHOLD
+    return True  # If the file doesn't exist, consider it stale
+
+
+def periodic_download():
+    # Define paths for each period's data
+    data_files = {
+        "M30": os.path.join(os.getcwd(), "datasets", "EURUSD_M30.csv"),
+        "H1": os.path.join(os.getcwd(), "datasets", "EURUSD_H1.csv"),
+        "H4": os.path.join(os.getcwd(), "datasets", "EURUSD_H4.csv"),
+        "D1": os.path.join(os.getcwd(), "datasets", "EURUSD_D1.csv"),
+    }
+
     while True:
         now = datetime.now()
         weekday = now.weekday()
 
-        if weekday < 5:  # Check if it's a weekday
-            if now.minute % 30 == 0:  # Download M30 every 30 minutes
-                print("Downloading M30...")
-                download_historical_forex_data("M30")
-                time.sleep(60)
-            if now.minute == 0:  # Download H1 every hour
-                print("Downloading H1...")
-                download_historical_forex_data("H1")
-                time.sleep(60)
-            if now.hour % 4 == 0 and now.minute == 0:  # Download H4 every 4 hours
-                print("Downloading H4...")
-                download_historical_forex_data("H4")
-                time.sleep(60)
-            if now.hour == 0 and now.minute == 0:  # Download D1 at midnight
-                print("Downloading D1...")
-                download_historical_forex_data("D1")
-                time.sleep(60)
+        if weekday < 7:  # Check if it's a weekday
+            # Check each period and download if necessary
+            for period in data_files.keys():
+                if is_file_stale(data_files[period]):
+                    print(f"Downloading {period}...")
+                    download_historical_forex_data(period)
+                else:
+                    print(f"{period} data is up to date.")
+
+            # Sleep for a longer duration to avoid frequent checks
+            time.sleep(3600)  # Check every hour after processing all downloads
         else:
             print("It's the weekend. Skipping downloads.")
-
-        time.sleep(60)
+            time.sleep(86400)  # Sleep for a day if it's the weekend
 
 if __name__ == "__main__":
-    main()
+    periodic_download()
