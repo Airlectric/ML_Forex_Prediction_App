@@ -1,59 +1,61 @@
 import streamlit as st
-from datetime import datetime  # Importing datetime
 
 # Custom CSS for styling and responsiveness
 st.markdown("""
 <style>
+    /* Body and Main Styling */
     body {
-        font-family: 'Roboto', sans-serif;
-        background-color: #f4f4f9;  /* Light background for contrast */
-        color: #333;  /* Dark text for readability */
+        background-color: #f0f4f8;  /* Light background for a clean, trading-inspired look */
+        color: #1c1e21;  /* Darker text for readability */
     }
     .welcome-container {
-        background-color: rgba(255, 255, 255, 0.9);  /* White background */
-        padding: 30px;
+        background-color: #ffffff;
+        padding: 40px;
         border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1); /* Sharp shadow for professional feel */
         text-align: center;
-        margin-top: 20px;
+        margin-top: 30px;
         width: 100%;
     }
     .welcome-title {
-        font-size: 2.5em;
-        color: #6c63ff; /* Primary color */
+        font-size: 3em;
+        color: #004080;  /* A rich navy blue for professionalism */
         margin: 0;
+        font-weight: bold;
+        letter-spacing: 1px;
     }
     .welcome-subtitle {
-        font-size: 1.8em;
-        color: #333;
-        margin: 10px 0;
+        font-size: 2em;
+        color: #ffa500; /* Gold to highlight importance */
+        margin: 15px 0;
     }
     .welcome-text {
         font-size: 1.2em;
-        color: #666;
-        margin: 10px 0;
+        color: #333333;
+        margin: 15px 0;
+        line-height: 1.6em;
     }
     .image-container {
         display: flex;
         justify-content: center;
-        margin-top: 20px;
+        margin-top: 25px;
         width: 100%;
     }
     img {
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        transition: transform 0.3s; /* Smooth scaling effect */
-        max-width: 100%;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); /* Softer shadow for images */
+        transition: transform 0.3s ease-out; /* Smooth scaling effect */
+        max-width: 90%;
         height: auto;
     }
     img:hover {
-        transform: scale(1.05); /* Scale on hover */
+        transform: scale(1.07);  /* Slight hover scale for interaction */
     }
     .notification {
         text-align: center;
         font-size: 1.2em;
-        color: #6c63ff; /* Primary color */
-        animation: flash 1.5s infinite; /* Flashing effect */
+        color: #004080;
+        animation: flash 1.5s infinite; /* Flashing effect for notification */
     }
     @keyframes flash {
         0% { opacity: 1; }
@@ -64,33 +66,51 @@ st.markdown("""
     /* Responsive adjustments */
     @media (max-width: 768px) {
         .welcome-title {
-            font-size: 2em;
+            font-size: 2.5em;
         }
         .welcome-subtitle {
-            font-size: 1.4em;
+            font-size: 1.5em;
         }
         .welcome-text {
-            font-size: 1em;
+            font-size: 1.1em;
         }
         .image-container {
             flex-direction: column;
             width: 100%;
         }
         img {
-            width: 90%;
+            width: 100%;
         }
     }
-
     @media (max-width: 480px) {
         .welcome-title {
-            font-size: 1.5em;
+            font-size: 2em;
         }
         .welcome-subtitle {
             font-size: 1.2em;
         }
         .welcome-text {
-            font-size: 0.9em;
+            font-size: 1em;
         }
+    }
+
+    /* Button Styling */
+    .stButton > button {
+        background-color: #004080;  /* Button matches title color */
+        color: white;
+        font-size: 16px;
+        padding: 12px 30px;
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease 0s;
+        cursor: pointer;
+    }
+    .stButton > button:hover {
+        background-color: #ffa500; /* Button changes to gold on hover */
+        color: #ffffff;
+        box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.2);
+        transform: translateY(-3px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -103,14 +123,19 @@ def toggle_sidebar():
     st.session_state.sidebar_open = not st.session_state.sidebar_open
 
 # Main content
-st.title("Welcome to the Forex & Stock Price Prediction Application")
+st.title("Welcome to the Forex Price Prediction Application")
 st.markdown("""
 <div class="welcome-container">
     <h1 class="welcome-title">Unlock the Future of Trading</h1>
-    <h2 class="welcome-subtitle">Predict Forex and Stock Prices with Confidence</h2>
+    <h2 class="welcome-subtitle">Predict Forex Prices with Confidence</h2>
     <p class="welcome-text">
-        This application leverages advanced machine learning models such as XGBoost and LightGBM to provide you with accurate predictions on stock and forex prices.
-        Enter your data, explore historical trends, and visualize your predictions in real-time.
+       This application uses a variety of advanced machine learning models tailored to 
+       support different forecasting needs. On the General Page, multivariate models like
+       VECM and univariate models like SARIMAX are utilized to provide comprehensive predictions.
+       For Close Price Prediction, powerful regression models offer precise forecasts. Additionally,
+       on the Classification Page, state-of-the-art classification algorithms such as XGBoost and LightGBM
+       are applied for prediction tasks. Explore historical trends, input your data, and receive real-time 
+       predictions with tailored visualizations.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -155,13 +180,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Instructions
+# Instructions for traders
 st.write("""
 ### How to Use This Application:
 1. **Input Parameters**: Navigate to the sidebar to enter the required parameters for your predictions.
-2. **Make Predictions**: Click on the 'Predict Price Direction' button to generate predictions.
-3. **Visualize Data**: Explore historical data visualizations and insights based on your inputs.
-4. **Feature Engineering**: Gain deeper insights into your data with our feature engineering tools.
+2. **Make Predictions**: Click on the 'Predict Price Direction'or any other button to generate predictions.
+3. **Visualize Data**: Explore historical and predicteed data visualizations and insights based on your inputs.
 """)
 
 # Call to action with flashing notification

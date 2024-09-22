@@ -29,15 +29,16 @@ def validate_inputs(open_price, high_price, low_price, volume):
 def fetch_historical_data(currency_pair, time_frame):
     file_path = os.path.join('datasets', f'{currency_pair}_{time_frame}.csv')
     if os.path.exists(file_path):
+        st.sidebar.success('Historical data found for the selected currency pair and time frame.')
         df = pd.read_csv(file_path, header=None)
         if not all(col in ['Time', 'Open', 'High', 'Low', 'Close', 'Volume'] for col in df.columns[:6]):
             df.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Volume']
         return df
     else:
-        st.error("Historical data not found for the selected currency pair and time frame.")
+        st.sidebar.error("Historical data not found for the selected currency pair and time frame.")
         return None
 
-# Function to download a template CSV file
+
 def download_template():
     template_data = {
         "Time": [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
@@ -52,7 +53,7 @@ def download_template():
     df_template.to_csv(template_path, index=False)
     return template_path
 
-# Function to save uploaded file to datasets folder
+
 def save_uploaded_file(uploaded_file, currency_pair, time_frame):
     directory = os.path.join('datasets', f'{currency_pair}_MetaTrader_CSV')
     if not os.path.exists(directory):
@@ -89,7 +90,7 @@ if upload_option == "Upload CSV":
         historical_data = None
 else:
     currency_pair = st.sidebar.selectbox("Select Currency Pair", ["EURUSD", "GBPUSD", "USDJPY"])
-    time_frame = st.sidebar.selectbox("Select Time Frame", ["M1", "M15", "M30", "H1", "H4", "D1"])
+    time_frame = st.sidebar.selectbox("Select Time Frame", ["D1"])
     historical_data = fetch_historical_data(currency_pair, time_frame)
 
 # Limit the number of rows for prediction (max 90 rows)
@@ -107,14 +108,6 @@ if historical_data is not None:
     # Allow users to edit the data directly
     editable_data = st.data_editor(editable_data, num_rows="dynamic")
     
-    # # # Option to remove the target column (e.g., 'Close')
-    # # remove_target = st.checkbox("Remove Target Column (Close)")
-    # removed_target = editable_data.drop(columns=['Close']) if remove_target and 'Close' in editable_data.columns else editable_data
-    
-    # st.subheader("Edited Historical Data")
-    # st.dataframe(removed_target)
-
-    # Customize input for prediction (editing first row of the data)
     st.subheader("Customize Input for Prediction")
     first_row_data = editable_data.iloc[0]
 
@@ -143,14 +136,16 @@ if historical_data is not None:
 
     # Button to trigger prediction
     if st.button("Predict Close Price"):
-        st.write('## Predictions')
-        user_inputs = {
-            'Open': open_price,
-            'High': high_price,
-            'Low': low_price,
-            'Volume': volume
-        }
-        predictions = make_predictions(user_inputs)
+        with st.spinner('💹 Analyzing market data and generating your forecast...'):
+            time.sleep(3) 
+            st.write('## Predictions')
+            user_inputs = {
+                'Open': open_price,
+                'High': high_price,
+                'Low': low_price,
+                'Volume': volume
+            }
+            predictions = make_predictions(user_inputs)
         
         # Define a custom style for model predictions
         st.markdown("""
@@ -260,6 +255,22 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
+# Download template button
+st.sidebar.subheader("Download Template")
+template_file_path = None  
+
+if st.sidebar.button("Generate Template CSV"):
+    template_file_path = download_template()  
+    st.sidebar.success("Template ready for download!")  
+
+if template_file_path: 
+    with open(template_file_path, "rb") as f:
+        st.sidebar.download_button(
+            label="Download Template CSV",
+            data=f,
+            file_name="template.csv",
+            mime="text/csv"
+        )
 
 
 # Custom styling for the Streamlit app
@@ -272,17 +283,30 @@ st.markdown("""
    padding: 2rem;
 }
 .stButton>button {
-   background-color: #4CAF50;
-   color: white;
-   border: none;
-   padding: 15px 32px;
-   text-align: center;
-   text-decoration: none;
-   display: inline-block;
-   font-size: 16px;
-   margin: 4px 2px;
-   cursor: pointer;
-   border-radius: 8px;
+    background: linear-gradient(90deg, #00C6FF, #0072FF); /* Gradient from light to dark blue */
+    color: white;
+    border: none;
+    padding: 15px 40px; /* Increased padding for a more luxurious feel */
+    text-align: center;
+    text-decoration: none;
+    font-size: 18px; /* Larger font size for better readability */
+    margin: 10px 2px; /* Slight margin increase for better spacing */
+    cursor: pointer;
+    border-radius: 50px; /* Rounded pill-shaped button */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Soft shadow for a 3D effect */
+    transition: all 0.3s ease-in-out; /* Smooth transition for hover effects */
 }
+
+.stButton>button:hover {
+    background: linear-gradient(90deg, #0072FF, #00C6FF); /* Reverse gradient on hover */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); /* Slightly larger shadow on hover */
+    transform: scale(1.05); /* Slightly enlarges the button when hovered */
+}
+
+.stButton>button:active {
+    transform: scale(0.98); /* Button slightly shrinks when clicked */
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1); /* Lighter shadow on click */
+}
+
 </style>
 """, unsafe_allow_html=True)

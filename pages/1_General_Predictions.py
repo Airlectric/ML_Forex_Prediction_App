@@ -13,11 +13,26 @@ from predictionModels.vecmapi import pipeline,plot_forecast_streamlit,evaluate_f
 def fetch_historical_data(currency_pair, time_frame):
     file_path = os.path.join('datasets', f'{currency_pair}_{time_frame}.csv')
     if os.path.exists(file_path):
-        st.success('Historical data found for the selected currency pair and time frame.')
+        st.sidebar.success('Historical data found for the selected currency pair and time frame.')
         return pd.read_csv(file_path, header=None)  # No header to be treated as raw data
     else:
-        st.error("Historical data not found for the selected currency pair and time frame.")
+        st.sidebar.error("Historical data not found for the selected currency pair and time frame.")
         return None
+    
+def download_template():
+    template_data = {
+        "Time": [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+        "Open": [1.1837],
+        "High": [1.1851],
+        "Low": [1.1821],
+        "Close": [1.1839],
+        "Volume": [100000]
+    }
+    df_template = pd.DataFrame(template_data)
+    template_path = 'datasets/template.csv'
+    df_template.to_csv(template_path, index=False)
+    return template_path
+
 def display_evaluation_metrics(mae, mse, rmse, mape, column_name):
     """
     Displays the evaluation metrics (MAE, MSE, RMSE, MAPE) for a given feature.
@@ -64,24 +79,37 @@ st.markdown("""
    padding: 2rem;
 }
 .stButton>button {
-   background-color: #4CAF50;
-   color: white;
-   border: none;
-   padding: 15px 32px;
-   text-align: center;
-   text-decoration: none;
-   display: inline-block;
-   font-size: 16px;
-   margin: 4px 2px;
-   cursor: pointer;
-   border-radius: 8px;
+    background: linear-gradient(90deg, #00C6FF, #0072FF); /* Gradient from light to dark blue */
+    color: white;
+    border: none;
+    padding: 15px 40px; /* Increased padding for a more luxurious feel */
+    text-align: center;
+    text-decoration: none;
+    font-size: 18px; /* Larger font size for better readability */
+    margin: 10px 2px; /* Slight margin increase for better spacing */
+    cursor: pointer;
+    border-radius: 50px; /* Rounded pill-shaped button */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Soft shadow for a 3D effect */
+    transition: all 0.3s ease-in-out; /* Smooth transition for hover effects */
 }
+
+.stButton>button:hover {
+    background: linear-gradient(90deg, #0072FF, #00C6FF); /* Reverse gradient on hover */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); /* Slightly larger shadow on hover */
+    transform: scale(1.05); /* Slightly enlarges the button when hovered */
+}
+
+.stButton>button:active {
+    transform: scale(0.98); /* Button slightly shrinks when clicked */
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1); /* Lighter shadow on click */
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 # If historical data is available, display it and allow user edits
 if historical_data is not None:
-    st.header("Edit Historical Data Before Prediction")
+    st.header("Optional Editing Of Historical Data Before Prediction")
     
     # Assign temporary headers for user clarity
     historical_data.columns = ['Time', 'Open', 'High', 'Low', 'Close', 'Volume']
@@ -116,27 +144,28 @@ if historical_data is not None:
         # New slider for train-test split control
     st.info("""
     **Train-Test Split Ratio**: This controls where the forecasting begins, determining the proportion of data used for training.
-    Adjusting this value changes how much data is used to train the model and the pointat which forecasting begins.
+    Adjusting this value changes how much data is used to train the model and the point at which forecasting begins.
     """)
     train_test_ratio = st.slider("Select the train-test split ratio", 0.8, 1.0, 0.9996, step=0.0001)
         
 
     if st.button("Run Prediction"):
-        # Save the edited dataset temporarily without headers
-        file_path = 'datasets/edited_data.csv'
-        edited_df.to_csv(file_path, index=False, header=False)  # Save without headers
-        
-        # Run the prediction pipeline with the CSV file
-        forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps, freq='D', prediction_freq=prediction_freq, n_components=n_components)
+        with st.spinner('💹 Analyzing market data and generating your forecast...'):
+            file_path = 'datasets/edited_data.csv'
+            edited_df.to_csv(file_path, index=False, header=False) 
+            
+            time.sleep(3) 
 
-        if forecast_result is not None and not forecast_result.empty:
-            # Update the session state with the new data
-            st.session_state['forecast'] = forecast_result
-            st.session_state['actual'] = actual 
-            st.session_state['historical_data'] = edited_df
+            forecast_result, actual = pipeline(file_path,train_test_ratio, steps=steps, freq='D', prediction_freq=prediction_freq, n_components=n_components)
 
-        
-            st.rerun()
+            if forecast_result is not None and not forecast_result.empty:
+                st.success("Prediction complete! 📊 Your forex forecast is ready.")
+                st.session_state['forecast'] = forecast_result
+                st.session_state['actual'] = actual 
+                st.session_state['historical_data'] = edited_df
+               
+            else:
+                st.error("Prediction failed. Please check your data and try again.")
     forecast=None
     actual=None
     # Step 3: If forecast results are available, show them with visualizations
@@ -152,11 +181,11 @@ if historical_data is not None:
 
 
     if forecast is not None and not forecast_result.empty:
-        st.write("### Forecast Results")
+        st.write("## Forecast Results")
         st.dataframe(forecast_result[['Open', 'High', 'Low', 'Close', 'Volume', 'Price Direction']])
 
         # Plotting visualizations of the forecast
-        st.write("### Forecast Visualizations")
+        st.write("## Forecast Visualizations")
 
         st.write("### Interactive Forex Forecast: Unveiling Trends and Divergences")
         if forecast is not None:
@@ -301,3 +330,20 @@ else:
             📂 Click the arrow on the top-left to upload or load data 📂
         </div>
     """, unsafe_allow_html=True)
+
+# Download template button
+st.sidebar.subheader("Download Template")
+template_file_path = None  
+
+if st.sidebar.button("Generate Template CSV"):
+    template_file_path = download_template()  
+    st.sidebar.success("Template ready for download!")  
+
+if template_file_path: 
+    with open(template_file_path, "rb") as f:
+        st.sidebar.download_button(
+            label="Download Template CSV",
+            data=f,
+            file_name="template.csv",
+            mime="text/csv"
+        )
