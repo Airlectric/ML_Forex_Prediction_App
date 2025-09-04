@@ -237,7 +237,7 @@ Follow PEP 8 guidelines and include comments.
 
 - Check [Issues](https://github.com/Airlectric/ML_Forex_Prediction_App/issues).
 - Create a new issue with details.
-- Contact: [your-email@example.com] (replace with your email).
+- Contact: [agudeydaniel8@gmail.com] 
 
 ---
 
